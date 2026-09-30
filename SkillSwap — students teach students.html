@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillSwap — Students teach students</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca' },
+          accent: { 500:'#06b6d4', 600:'#0891b2' }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  :root { color-scheme: light dark; }
+  body { background:#f8fafc; }
+  .glass { background: rgba(255,255,255,.85); backdrop-filter: blur(12px); }
+  .custom-scrollbar::-webkit-scrollbar { width:6px; height:6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+  .ico { display:inline-block; vertical-align:middle; }
+  :focus-visible { outline:2px solid #4f46e5; outline-offset:2px; border-radius:6px; }
+  table, pre { max-width:100%; }
+  .scroll-x { overflow-x:auto; }
+
+  /* Dark viewer support: remap the handful of surface utilities we rely on. */
+  .dark-ui body, .dark-ui .bg-slate-50 { background:#0b1220; }
+  .dark-ui .bg-white { background:#111a2e; }
+  .dark-ui .bg-slate-100 { background:#1c2742; }
+  .dark-ui .glass { background: rgba(11,18,32,.85); }
+  .dark-ui .text-slate-900 { color:#f1f5f9; }
+  .dark-ui .text-slate-800 { color:#e2e8f0; }
+  .dark-ui .text-slate-700 { color:#cbd5e1; }
+  .dark-ui .text-slate-600 { color:#a3b1c6; }
+  .dark-ui .text-slate-500 { color:#94a3b8; }
+  .dark-ui .text-slate-400 { color:#64748b; }
+  .dark-ui .border-slate-100, .dark-ui .border-slate-200, .dark-ui .border-slate-300 { border-color:#22304d; }
+  .dark-ui .bg-brand-50 { background:rgba(99,102,241,.18); }
+  .dark-ui .bg-amber-50 { background:rgba(245,158,11,.15); }
+  .dark-ui .hover\:bg-slate-50:hover { background:#16213a; }
+  .dark-ui input, .dark-ui select, .dark-ui textarea { background:#0b1220; color:#e2e8f0; }
+  .dark-ui .from-brand-50\/60 { --tw-gradient-from: rgba(99,102,241,.12); }
+  .dark-ui .to-white { --tw-gradient-to: #0b1220; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-40 w-full border-b border-slate-200 glass">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16 items-center gap-2">
+      <button onclick="navigateTo('landing')" class="flex items-center gap-3 shrink-0">
+        <span class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white shadow-md" data-icon="repeat" data-size="22"></span>
+        <span class="text-xl font-bold bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent">SkillSwap</span>
+      </button>
+
+      <nav class="hidden md:flex items-center gap-1">
+        <button onclick="navigateTo('discover')" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition" data-page="discover">Discover</button>
+        <button onclick="navigateTo('matches')" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition" data-page="matches">Matches</button>
+        <button onclick="navigateTo('ai')" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition inline-flex items-center gap-1.5" data-page="ai"><span data-icon="sparkles" data-size="16" class="text-brand-600"></span>Study buddy</button>
+        <button onclick="navigateTo('community')" class="nav-link px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition" data-page="community">Campus</button>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <div id="auth-actions" class="flex items-center gap-2">
+          <button onclick="navigateTo('signup')" class="hidden sm:block px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition">Sign in</button>
+          <button onclick="navigateTo('signup')" class="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm transition">Get started</button>
+        </div>
+
+        <div id="user-actions" class="hidden items-center gap-2">
+          <button onclick="navigateTo('dashboard')" class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-full text-amber-800 text-xs font-semibold transition">
+            <span data-icon="coins" data-size="15"></span><span id="wallet-points">0</span> pts
+          </button>
+          <button onclick="toggleNotifications()" class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition" aria-label="Notifications">
+            <span data-icon="bell" data-size="19"></span>
+            <span id="notif-badge" class="hidden absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+          <button onclick="navigateTo('dashboard')" id="header-avatar" class="w-9 h-9 rounded-full border-2 border-brand-500 text-xs font-bold text-white flex items-center justify-center" style="background:#4f46e5">ME</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- NOTIFICATIONS -->
+<div id="notif-dropdown" class="hidden fixed right-3 top-16 z-50 w-80 max-w-[92vw] bg-white rounded-2xl shadow-xl border border-slate-200 p-4">
+  <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+    <h4 class="text-sm font-bold text-slate-800">Notifications</h4>
+    <button class="text-xs text-brand-600 font-medium" onclick="markAllNotifsRead()">Mark all read</button>
+  </div>
+  <div id="notif-list" class="space-y-2 text-xs max-h-64 overflow-y-auto custom-scrollbar"></div>
+</div>
+
+<main class="flex-grow">
+
+<!-- LANDING -->
+<section id="view-landing">
+  <div class="bg-gradient-to-b from-brand-50/60 to-white pt-16 pb-20 lg:pt-24 lg:pb-24">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-brand-100 text-brand-700 mb-6">
+        <span data-icon="sparkles" data-size="14"></span> Peer-to-peer student exchange
+      </span>
+      <h1 class="text-4xl sm:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+        Learn what you need.<br>
+        <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-accent-500 bg-clip-text text-transparent">Teach what you know.</span>
+      </h1>
+      <p class="mt-6 text-lg text-slate-600 max-w-2xl mx-auto">
+        Trade academic help, coding, languages and creative skills with other students — no fees, no tutors, just an even swap.
+      </p>
+      <div class="mt-10 flex flex-wrap justify-center gap-3">
+        <button onclick="navigateTo('discover')" class="px-6 py-3.5 text-base font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-lg transition inline-flex items-center gap-2">
+          <span data-icon="search" data-size="18"></span> Find a skill
+        </button>
+        <button onclick="navigateTo('signup')" class="px-6 py-3.5 text-base font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-xl shadow-sm transition inline-flex items-center gap-2">
+          <span data-icon="book" data-size="18" class="text-brand-600"></span> Offer to teach
+        </button>
+      </div>
+
+      <div class="mt-16 max-w-4xl mx-auto bg-white rounded-2xl p-6 shadow-xl border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 tracking-wider mb-4">Swaps happening on campus right now</p>
+        <div id="ticker" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-slate-900 text-white py-12">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+      <blockquote class="text-xl sm:text-2xl font-light italic text-slate-200">
+        “You don't have to be an expert to teach. You just need to know something someone else wants to learn.”
+      </blockquote>
+      <p class="mt-4 text-xs tracking-widest text-brand-400 font-semibold">THE SKILLSWAP IDEA</p>
+    </div>
+  </div>
+
+  <div class="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-14">
+      <h2 class="text-3xl font-bold text-slate-900">How a swap works</h2>
+      <p class="mt-3 text-slate-600">Four steps from sign-up to your first session.</p>
+    </div>
+    <ol class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <li class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+        <div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-xl flex items-center justify-center mx-auto mb-4" data-icon="user-plus"></div>
+        <h3 class="font-bold text-slate-800 mb-2">1. List your skills</h3>
+        <p class="text-sm text-slate-600">Say what you can teach and what you want to learn.</p>
+      </li>
+      <li class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4" data-icon="zap"></div>
+        <h3 class="font-bold text-slate-800 mb-2">2. Get matched</h3>
+        <p class="text-sm text-slate-600">We rank students whose skills fit yours both ways.</p>
+      </li>
+      <li class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+        <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4" data-icon="calendar"></div>
+        <h3 class="font-bold text-slate-800 mb-2">3. Book a session</h3>
+        <p class="text-sm text-slate-600">Message, agree a time, meet online or on campus.</p>
+      </li>
+      <li class="bg-white p-6 rounded-2xl border border-slate-200 text-center">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mx-auto mb-4" data-icon="award"></div>
+        <h3 class="font-bold text-slate-800 mb-2">4. Earn points</h3>
+        <p class="text-sm text-slate-600">Teaching earns points you spend on learning.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- SIGN UP -->
+<section id="view-signup" class="hidden py-12 max-w-2xl mx-auto px-4">
+  <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 sm:p-8">
+    <div class="mb-8">
+      <div class="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
+        <span id="step-label">Step 1 of 3</span><span id="step-name">Your details</span>
+      </div>
+      <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+        <div id="progress-bar" class="bg-brand-600 h-full transition-all duration-300" style="width:33%"></div>
+      </div>
+    </div>
+
+    <div id="step-1" class="space-y-4">
+      <h2 class="text-2xl font-bold text-slate-900">Create your profile</h2>
+      <p class="text-xs text-slate-500">Nothing leaves your browser — this demo saves your profile on this device only.</p>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-name">Full name</label>
+        <input id="f-name" type="text" placeholder="e.g. Megha Rani" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-college">College or university</label>
+          <input id="f-college" type="text" placeholder="e.g. Utkal University" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-course">Course</label>
+          <select id="f-course" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-sm">
+            <option>B.Tech</option><option>B.Sc.</option><option>B.Com.</option><option>BCA / MCA</option><option>MBA</option><option>M.Tech</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-dept">Department</label>
+          <input id="f-dept" type="text" placeholder="e.g. Computer Science" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-year">Year</label>
+          <input id="f-year" type="text" placeholder="e.g. 2nd year" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 text-sm">
+        </div>
+      </div>
+      <p id="err-1" class="hidden text-xs text-red-600"></p>
+      <button type="button" onclick="goToStep(2)" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition shadow-md mt-2">Continue</button>
+    </div>
+
+    <div id="step-2" class="hidden space-y-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">What can you teach?</h2>
+        <p class="text-xs text-slate-500">Pick at least one. Tap again to remove.</p>
+        <div class="mt-3 flex flex-wrap gap-2" id="teach-picker"></div>
+      </div>
+      <hr class="border-slate-100">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">What do you want to learn?</h2>
+        <p class="text-xs text-slate-500">Pick at least one.</p>
+        <div class="mt-3 flex flex-wrap gap-2" id="learn-picker"></div>
+      </div>
+      <p id="err-2" class="hidden text-xs text-red-600"></p>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="goToStep(1)" class="w-1/3 py-3 border border-slate-300 text-slate-700 font-semibold rounded-xl">Back</button>
+        <button type="button" onclick="goToStep(3)" class="w-2/3 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md">Continue</button>
+      </div>
+    </div>
+
+    <div id="step-3" class="hidden space-y-6">
+      <h2 class="text-2xl font-bold text-slate-900">How you like to learn</h2>
+      <div>
+        <p class="block text-xs font-semibold text-slate-700 mb-2">Your level in the skills you want to learn</p>
+        <div class="grid grid-cols-3 gap-3" id="level-picker"></div>
+      </div>
+      <div>
+        <p class="block text-xs font-semibold text-slate-700 mb-2">When you're free</p>
+        <div class="grid grid-cols-2 gap-3" id="avail-picker"></div>
+      </div>
+      <div>
+        <p class="block text-xs font-semibold text-slate-700 mb-2">Where you'd like to meet</p>
+        <div class="grid grid-cols-3 gap-3" id="mode-picker"></div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 mb-1" for="f-bio">A line about you <span class="font-normal text-slate-400">(optional)</span></label>
+        <textarea id="f-bio" rows="2" placeholder="Second-year stats student, happy to explain regression over chai." class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" onclick="goToStep(2)" class="w-1/3 py-3 border border-slate-300 text-slate-700 font-semibold rounded-xl">Back</button>
+        <button type="button" onclick="completeSignup()" class="w-2/3 py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-md">Create profile</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DISCOVER -->
+<section id="view-discover" class="hidden py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+      <h2 class="text-3xl font-bold text-slate-900">Discover students</h2>
+      <p class="text-slate-600 mt-1 text-sm" id="discover-sub">Browse who's teaching what.</p>
+    </div>
+    <button onclick="navigateTo('ai')" class="text-sm font-semibold text-brand-600 inline-flex items-center gap-1.5"><span data-icon="sparkles" data-size="16"></span> Not sure what to learn?</button>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-[1fr,auto,auto] gap-3">
+    <input id="q" oninput="renderDiscover()" type="search" placeholder="Search a skill, name or college" class="px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+    <select id="cat" onchange="renderDiscover()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-sm"></select>
+    <label class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 cursor-pointer">
+      <input id="only-matches" type="checkbox" onchange="renderDiscover()" class="accent-indigo-600"> Fits my skills
+    </label>
+  </div>
+
+  <div id="discover-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+</section>
+
+<!-- MATCHES -->
+<section id="view-matches" class="hidden py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <h2 class="text-3xl font-bold text-slate-900 mb-1">Your swaps</h2>
+  <p class="text-slate-600 text-sm mb-6">Requests you've sent and conversations that are open.</p>
+  <div class="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-5">
+    <div id="match-list" class="space-y-3"></div>
+    <div id="chat-panel" class="bg-white border border-slate-200 rounded-2xl flex flex-col min-h-[420px]"></div>
+  </div>
+</section>
+
+<!-- AI -->
+<section id="view-ai" class="hidden py-10 max-w-3xl mx-auto px-4">
+  <div class="text-center mb-8">
+    <span class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-accent-500 text-white flex items-center justify-center mx-auto mb-4" data-icon="sparkles"></span>
+    <h2 class="text-3xl font-bold text-slate-900">Study buddy</h2>
+    <p class="text-slate-600 mt-2 text-sm">Turn a skill you want into a plan you can actually follow with a peer.</p>
+  </div>
+
+  <div id="ai-unavailable" class="hidden bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-2xl p-4 mb-5">
+    The study buddy isn't available in this view. Everything else on the page still works.
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-2xl p-5">
+    <label class="block text-xs font-semibold text-slate-700 mb-1" for="ai-topic">What do you want to learn?</label>
+    <input id="ai-topic" type="text" placeholder="e.g. Python for data analysis" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button onclick="askAI('plan')" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl">Build a 4-week plan</button>
+      <button onclick="askAI('questions')" class="px-4 py-2.5 border border-slate-300 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50">Questions to ask my peer</button>
+      <button onclick="askAI('teach')" class="px-4 py-2.5 border border-slate-300 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50">What could I teach back?</button>
+    </div>
+  </div>
+
+  <div id="ai-output" class="hidden mt-5 bg-white border border-slate-200 rounded-2xl p-5 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap scroll-x"></div>
+</section>
+
+<!-- COMMUNITY -->
+<section id="view-community" class="hidden py-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <h2 class="text-3xl font-bold text-slate-900 mb-1">Campus network</h2>
+  <p class="text-slate-600 text-sm mb-6">What students around you are teaching and asking for.</p>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" id="stats-grid"></div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 mb-4">Most requested skills</h3>
+      <div id="demand-list" class="space-y-3"></div>
+    </div>
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <h3 class="font-bold text-slate-800 mb-4">Top teachers this term</h3>
+      <div id="leaderboard" class="space-y-3"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="view-dashboard" class="hidden py-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div id="dashboard-body"></div>
+</section>
+
+</main>
+
+<footer class="border-t border-slate-200 py-8 mt-10">
+  <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+    SkillSwap — a student-run skill exchange. Demo build: profiles and swaps are stored in your browser, and the other students shown are sample data.
+  </div>
+</footer>
+
+<script>
+/* ---------------- icons (inline, no external icon library) ---------------- */
+const ICONS = {
+  repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  sparkles:'<path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15v4"/><path d="M17 17h4"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/>',
+  'user-plus':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/>',
+  zap:'<path d="M13 2 3 14h9l-1 8 10-12h-9Z"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  award:'<circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/>',
+  swap:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  star:'<path d="m12 2 3 6.5 7 1-5 4.9 1.2 7L12 18l-6.2 3.4L7 14.4 2 9.5l7-1Z"/>',
+  send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  map:'<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>'
+};
+function paintIcons(root) {
+  (root || document).querySelectorAll('[data-icon]').forEach(el => {
+    const d = ICONS[el.getAttribute('data-icon')];
+    if (!d || el.dataset.painted) return;
+    const s = el.getAttribute('data-size') || 20;
+    el.innerHTML = '<svg class="ico" width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
+    el.dataset.painted = '1';
+  });
+}
+
+/* ---------------- data ---------------- */
+const SKILLS = [
+  {n:'Python', e:'🐍', c:'Tech'}, {n:'Web development', e:'🌐', c:'Tech'}, {n:'Data analysis', e:'📊', c:'Tech'},
+  {n:'Excel', e:'📈', c:'Tech'}, {n:'Machine learning', e:'🤖', c:'Tech'}, {n:'Java', e:'☕', c:'Tech'},
+  {n:'Calculus', e:'∫', c:'Academic'}, {n:'Statistics', e:'🎲', c:'Academic'}, {n:'Physics', e:'⚛️', c:'Academic'},
+  {n:'Organic chemistry', e:'🧪', c:'Academic'}, {n:'Accounting', e:'🧾', c:'Academic'}, {n:'Economics', e:'💹', c:'Academic'},
+  {n:'Zoology', e:'🦁', c:'Academic'}, {n:'Marketing', e:'📣', c:'Business'}, {n:'Public speaking', e:'🗣️', c:'Business'},
+  {n:'Resume & interviews', e:'💼', c:'Business'}, {n:'English fluency', e:'🇬🇧', c:'Language'}, {n:'Spanish', e:'🇪🇸', c:'Language'},
+  {n:'Hindi', e:'🪔', c:'Language'}, {n:'Japanese', e:'🇯🇵', c:'Language'}, {n:'Graphic design', e:'🎨', c:'Creative'},
+  {n:'Video editing', e:'🎬', c:'Creative'}, {n:'Photography', e:'📷', c:'Creative'}, {n:'Guitar', e:'🎸', c:'Creative'},
+  {n:'Creative writing', e:'✍️', c:'Creative'}, {n:'Chess', e:'♟️', c:'Creative'}
+];
+const skillMeta = n => SKILLS.find(s => s.n === n) || {n, e:'✨', c:'Other'};
+const CATS = ['All categories', ...[...new Set(SKILLS.map(s => s.c))]];
+
+const PEERS = [
+  {id:'p1', name:'Ananya Mishra', college:'Utkal University', year:'3rd year · Statistics', teach:['Statistics','Data analysis','Excel'], learn:['Graphic design','English fluency'], rating:4.9, sessions:23, mode:'Both', bio:'I explain stats with cricket averages until it clicks.'},
+  {id:'p2', name:'Rohit Verma', college:'IIT Bhubaneswar', year:'2nd year · CSE', teach:['Python','Machine learning','Java'], learn:['Public speaking','Marketing'], rating:4.7, sessions:31, mode:'Online', bio:'Can debug your code and your logic, in that order.'},
+  {id:'p3', name:'Fatima Khan', college:'Utkal University', year:'4th year · Chemistry', teach:['Organic chemistry','Physics'], learn:['Python','Video editing'], rating:5.0, sessions:18, mode:'On campus', bio:'Reaction mechanisms are just stories with arrows.'},
+  {id:'p4', name:'Dev Patel', college:'NIT Rourkela', year:'3rd year · Mechanical', teach:['Calculus','Physics','Chess'], learn:['Web development','Spanish'], rating:4.6, sessions:12, mode:'Both', bio:'Weekend problem-solving sessions, bring your worst integral.'},
+  {id:'p5', name:'Sneha Rao', college:'Christ University', year:'2nd year · Design', teach:['Graphic design','Video editing','Photography'], learn:['Statistics','Resume & interviews'], rating:4.8, sessions:27, mode:'Online', bio:'Will redo your slide deck and tell you why it was bad.'},
+  {id:'p6', name:'Arjun Nair', college:'Utkal University', year:'1st year · Commerce', teach:['Accounting','Excel'], learn:['Python','Guitar'], rating:4.4, sessions:9, mode:'On campus', bio:'Tally and balance sheets without the panic.'},
+  {id:'p7', name:'Meera Joshi', college:'Delhi University', year:'3rd year · English', teach:['Creative writing','English fluency','Public speaking'], learn:['Economics','Photography'], rating:4.9, sessions:35, mode:'Both', bio:'Ten years of debate, now teaching people to stop saying "basically".'},
+  {id:'p8', name:'Kabir Sharma', college:'IIT Bhubaneswar', year:'4th year · Economics', teach:['Economics','Marketing','Resume & interviews'], learn:['Machine learning','Japanese'], rating:4.5, sessions:14, mode:'Online', bio:'Interned twice, happy to review your CV line by line.'},
+  {id:'p9', name:'Priya Das', college:'Ravenshaw University', year:'2nd year · Zoology', teach:['Zoology','Hindi'], learn:['Excel','Graphic design'], rating:4.7, sessions:11, mode:'On campus', bio:'Field notes, diagrams and very detailed flashcards.'},
+  {id:'p10', name:'Yuki Tanaka', college:'Exchange · Utkal University', year:'Exchange · Business', teach:['Japanese','Marketing'], learn:['Hindi','Organic chemistry'], rating:4.8, sessions:16, mode:'Both', bio:'Language swaps over coffee, twice a week.'},
+  {id:'p11', name:'Sahil Gupta', college:'NIT Rourkela', year:'2nd year · IT', teach:['Web development','Guitar'], learn:['Calculus','Public speaking'], rating:4.3, sessions:8, mode:'Both', bio:'Built three college websites, still bad at limits.'},
+  {id:'p12', name:'Laura Gómez', college:'Exchange · Christ University', year:'Exchange · Literature', teach:['Spanish','Creative writing'], learn:['English fluency','Chess'], rating:4.9, sessions:21, mode:'Online', bio:'Conversation practice, no textbooks, just talking.'}
+];
+const AVATAR_COLORS = ['#4f46e5','#0891b2','#db2777','#059669','#d97706','#7c3aed','#dc2626','#0284c7'];
+const initials = n => n.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+const avatarColor = id => AVATAR_COLORS[[...id].reduce((a,c)=>a+c.charCodeAt(0),0) % AVATAR_COLORS.length];
+
+/* ---------------- state ---------------- */
+const KEY = 'skillswap.v1';
+let state = { user:null, points:0, swaps:{}, threads:{}, notifs:[], activeSwap:null };
+let draft = { teach:[], learn:[], level:'Beginner', avail:['Weekdays'], mode:'Both' };
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({user:state.user, points:state.points, swaps:state.swaps, threads:state.threads, notifs:state.notifs})); }
+  catch (e) { /* storage unavailable — the session still works, it just won't persist */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) Object.assign(state, JSON.parse(raw));
+  } catch (e) { /* ignore corrupt or blocked storage */ }
+}
+
+/* ---------------- navigation ---------------- */
+const PAGES = ['landing','signup','discover','matches','ai','community','dashboard'];
+const NEEDS_ACCOUNT = ['matches','dashboard'];
+
+function navigateTo(page) {
+  if (NEEDS_ACCOUNT.includes(page) && !state.user) { notify('Create a profile first to open ' + page + '.'); page = 'signup'; }
+  PAGES.forEach(p => document.getElementById('view-' + p).classList.toggle('hidden', p !== page));
+  document.querySelectorAll('.nav-link').forEach(b => {
+    const on = b.dataset.page === page;
+    b.classList.toggle('bg-brand-50', on); b.classList.toggle('text-brand-700', on); b.classList.toggle('text-slate-600', !on);
+  });
+  document.getElementById('notif-dropdown').classList.add('hidden');
+  window.scrollTo({top:0, behavior:'instant'});
+  if (page === 'discover') renderDiscover();
+  if (page === 'matches') renderMatches();
+  if (page === 'community') renderCommunity();
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'signup' && state.user) renderDashboardRedirect();
+}
+function renderDashboardRedirect() {
+  document.getElementById('view-signup').classList.add('hidden');
+  document.getElementById('view-dashboard').classList.remove('hidden');
+  renderDashboard();
+}
+
+/* ---------------- notifications ---------------- */
+function notify(text) {
+  state.notifs.unshift({text, at:Date.now(), read:false});
+  state.notifs = state.notifs.slice(0, 20);
+  save(); renderNotifs();
+}
+function renderNotifs() {
+  const list = document.getElementById('notif-list');
+  const unread = state.notifs.filter(n => !n.read).length;
+  document.getElementById('notif-badge').classList.toggle('hidden', unread === 0);
+  list.innerHTML = state.notifs.length
+    ? state.notifs.map(n => `<div class="p-2.5 rounded-xl ${n.read ? 'bg-slate-50' : 'bg-brand-50'}">
+        <p class="text-slate-700">${esc(n.text)}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">${timeAgo(n.at)}</p></div>`).join('')
+    : '<p class="text-slate-500 p-2">No notifications yet. Send a swap request and they\'ll show up here.</p>';
+}
+function toggleNotifications() { document.getElementById('notif-dropdown').classList.toggle('hidden'); }
+function markAllNotifsRead() { state.notifs.forEach(n => n.read = true); save(); renderNotifs(); }
+function timeAgo(t) {
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + ' min ago';
+  if (s < 86400) return Math.floor(s/3600) + ' h ago';
+  return Math.floor(s/86400) + ' d ago';
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------------- onboarding ---------------- */
+function pill(label, emoji, on) {
+  return `<span class="px-3 py-1.5 rounded-full text-xs font-semibold border cursor-pointer select-none transition ${on ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'}">${emoji} ${esc(label)}</span>`;
+}
+function renderPickers() {
+  ['teach','learn'].forEach(kind => {
+    const el = document.getElementById(kind + '-picker');
+    el.innerHTML = SKILLS.map(s => `<button type="button" data-skill="${esc(s.n)}">${pill(s.n, s.e, draft[kind].includes(s.n))}</button>`).join('');
+    el.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const n = b.dataset.skill, arr = draft[kind];
+      const i = arr.indexOf(n);
+      if (i > -1) arr.splice(i, 1); else arr.push(n);
+      renderPickers();
+    });
+  });
+  const opt = (v, on) => `<button type="button" class="border rounded-xl p-3 text-center text-xs font-medium transition ${on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'}">${v}</button>`;
+  const lvl = document.getElementById('level-picker');
+  lvl.innerHTML = ['Beginner','Intermediate','Advanced'].map(v => opt(v, draft.level === v)).join('');
+  lvl.querySelectorAll('button').forEach((b,i) => b.onclick = () => { draft.level = ['Beginner','Intermediate','Advanced'][i]; renderPickers(); });
+  const av = document.getElementById('avail-picker');
+  av.innerHTML = ['Weekdays','Weekends'].map(v => opt(v, draft.avail.includes(v))).join('');
+  av.querySelectorAll('button').forEach((b,i) => b.onclick = () => {
+    const v = ['Weekdays','Weekends'][i], j = draft.avail.indexOf(v);
+    if (j > -1) draft.avail.splice(j,1); else draft.avail.push(v);
+    renderPickers();
+  });
+  const md = document.getElementById('mode-picker');
+  md.innerHTML = ['Online','On campus','Both'].map(v => opt(v, draft.mode === v)).join('');
+  md.querySelectorAll('button').forEach((b,i) => b.onclick = () => { draft.mode = ['Online','On campus','Both'][i]; renderPickers(); });
+}
+function goToStep(n) {
+  if (n === 2) {
+    const name = document.getElementById('f-name').value.trim();
+    const college = document.getElementById('f-college').value.trim();
+    if (!name || !college) return showErr('err-1', 'Add your name and college to continue.');
+    hideErr('err-1');
+  }
+  if (n === 3) {
+    if (!draft.teach.length || !draft.learn.length) return showErr('err-2', 'Pick at least one skill to teach and one to learn.');
+    hideErr('err-2');
+  }
+  [1,2,3].forEach(i => document.getElementById('step-' + i).classList.toggle('hidden', i !== n));
+  document.getElementById('step-label').textContent = 'Step ' + n + ' of 3';
+  document.getElementById('step-name').textContent = ['Your details','Your skills','Preferences'][n-1];
+  document.getElementById('progress-bar').style.width = (n * 33.34) + '%';
+}
+function showErr(id, msg) { const e = document.getElementById(id); e.textContent = msg; e.classList.remove('hidden'); }
+function hideErr(id) { document.getElementById(id).classList.add('hidden'); }
+
+function completeSignup() {
+  state.user = {
+    id:'me',
+    name: document.getElementById('f-name').value.trim() || 'Student',
+    college: document.getElementById('f-college').value.trim(),
+    course: document.getElementById('f-course').value,
+    dept: document.getElementById('f-dept').value.trim(),
+    year: document.getElementById('f-year').value.trim(),
+    bio: document.getElementById('f-bio').value.trim(),
+    teach: [...draft.teach], learn: [...draft.learn],
+    level: draft.level, avail: [...draft.avail], mode: draft.mode,
+    joined: Date.now()
+  };
+  if (!state.points) state.points = 60;
+  save(); renderAuthUI();
+  notify('Profile created. You start with 60 points — spend them on sessions you take.');
+  navigateTo('discover');
+}
+
+function renderAuthUI() {
+  const signedIn = !!state.user;
+  document.getElementById('auth-actions').classList.toggle('hidden', signedIn);
+  const ua = document.getElementById('user-actions');
+  ua.classList.toggle('hidden', !signedIn);
+  ua.classList.toggle('flex', signedIn);
+  if (signedIn) {
+    document.getElementById('wallet-points').textContent = state.points;
+    const av = document.getElementById('header-avatar');
+    av.textContent = initials(state.user.name);
+    av.style.background = avatarColor(state.user.name);
+  }
+  renderNotifs();
+}
+
+/* ---------------- matching ---------------- */
+function matchInfo(peer) {
+  const u = state.user;
+  if (!u) return {score:0, theyTeach:[], theyLearn:[]};
+  const theyTeach = peer.teach.filter(s => u.learn.includes(s));
+  const theyLearn = peer.learn.filter(s => u.teach.includes(s));
+  let score = theyTeach.length * 34 + theyLearn.length * 26;
+  if (theyTeach.length && theyLearn.length) score += 20;        // an even, two-way swap
+  if (u.college && peer.college.includes(u.college)) score += 8;
+  if (u.mode === 'Both' || peer.mode === 'Both' || u.mode === peer.mode) score += 5;
+  return {score: Math.min(99, score), theyTeach, theyLearn};
+}
+
+/* ---------------- discover ---------------- */
+function skillChip(n, tone) {
+  const m = skillMeta(n);
+  const tones = { teach:'bg-emerald-50 text-emerald-700', learn:'bg-indigo-50 text-indigo-700', flat:'bg-slate-100 text-slate-700' };
+  return `<span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${tones[tone]}">${m.e} ${esc(n)}</span>`;
+}
+function renderDiscover() {
+  const q = (document.getElementById('q').value || '').toLowerCase().trim();
+  const cat = document.getElementById('cat').value;
+  const onlyMatches = document.getElementById('only-matches').checked;
+  document.getElementById('discover-sub').textContent = state.user
+    ? 'Ranked by how well each student fits your skills.'
+    : 'Browse who teaches what. Create a profile to see match scores.';
+
+  let list = PEERS.map(p => ({p, m: matchInfo(p)}));
+  if (q) list = list.filter(({p}) => (p.name + ' ' + p.college + ' ' + p.year + ' ' + p.teach.join(' ') + ' ' + p.learn.join(' ')).toLowerCase().includes(q));
+  if (cat && cat !== 'All categories') list = list.filter(({p}) => p.teach.some(s => skillMeta(s).c === cat));
+  if (onlyMatches) list = list.filter(({m}) => m.score > 0);
+  list.sort((a,b) => b.m.score - a.m.score || b.p.rating - a.p.rating);
+
+  const grid = document.getElementById('discover-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="col-span-full bg-white border border-dashed border-slate-300 rounded-2xl p-10 text-center">
+      <p class="font-semibold text-slate-800">No students match that yet.</p>
+      <p class="text-sm text-slate-600 mt-1">Try a broader search, or clear the filters to see everyone.</p>
+      <button onclick="clearFilters()" class="mt-4 px-4 py-2 text-sm font-semibold text-white bg-brand-600 rounded-xl">Clear filters</button></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(({p, m}) => {
+    const swap = state.swaps[p.id];
+    const btn = swap
+      ? `<button onclick="navigateTo('matches')" class="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50">${swap.status === 'pending' ? 'Request sent' : 'Open chat'}</button>`
+      : `<button onclick="requestSwap('${p.id}')" class="px-3 py-2 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-700 text-white inline-flex items-center gap-1.5"><span data-icon="swap" data-size="14"></span>Request swap</button>`;
+    return `<article class="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col">
+      <div class="flex items-start gap-3">
+        <div class="w-11 h-11 rounded-full text-white text-sm font-bold flex items-center justify-center shrink-0" style="background:${avatarColor(p.id)}">${initials(p.name)}</div>
+        <div class="min-w-0 flex-1">
+          <h3 class="font-bold text-slate-900 truncate">${esc(p.name)}</h3>
+          <p class="text-xs text-slate-500 truncate">${esc(p.year)} · ${esc(p.college)}</p>
+        </div>
+        ${m.score ? `<span class="shrink-0 px-2 py-1 rounded-lg text-xs font-bold bg-brand-50 text-brand-700">${m.score}% fit</span>` : ''}
+      </div>
+      <p class="text-sm text-slate-600 mt-3">${esc(p.bio)}</p>
+      <div class="mt-4 space-y-2">
+        <div class="flex flex-wrap gap-1.5"><span class="text-[11px] font-bold text-slate-400 self-center mr-1">Teaches</span>${p.teach.map(s => skillChip(s, m.theyTeach.includes(s) ? 'teach' : 'flat')).join('')}</div>
+        <div class="flex flex-wrap gap-1.5"><span class="text-[11px] font-bold text-slate-400 self-center mr-1">Wants</span>${p.learn.map(s => skillChip(s, m.theyLearn.includes(s) ? 'learn' : 'flat')).join('')}</div>
+      </div>
+      <div class="flex items-center justify-between mt-5 pt-4 border-t border-slate-100">
+        <span class="text-xs text-slate-500 inline-flex items-center gap-1"><span data-icon="star" data-size="14" class="text-amber-500"></span>${p.rating} · ${p.sessions} sessions · ${esc(p.mode)}</span>
+        ${btn}
+      </div>
+    </article>`;
+  }).join('');
+  paintIcons(grid);
+}
+function clearFilters() {
+  document.getElementById('q').value = '';
+  document.getElementById('cat').value = 'All categories';
+  document.getElementById('only-matches').checked = false;
+  renderDiscover();
+}
+
+/* ---------------- swaps & chat ---------------- */
+function requestSwap(peerId) {
+  if (!state.user) { notify('Create a profile to send swap requests.'); return navigateTo('signup'); }
+  const peer = PEERS.find(p => p.id === peerId);
+  const m = matchInfo(peer);
+  state.swaps[peerId] = {status:'pending', at:Date.now(), theyTeach:m.theyTeach, theyLearn:m.theyLearn};
+  state.threads[peerId] = state.threads[peerId] || [];
+  save(); renderDiscover();
+  notify('Swap request sent to ' + peer.name + '.');
+
+  setTimeout(() => {
+    if (!state.swaps[peerId] || state.swaps[peerId].status !== 'pending') return;
+    state.swaps[peerId].status = 'matched';
+    const topic = m.theyTeach[0] || peer.teach[0];
+    const back = m.theyLearn[0];
+    state.threads[peerId].push({from:'them', text:`Hi! Happy to go over ${topic}. ${back ? 'Could you help me with ' + back + ' in return?' : 'What are you stuck on?'}`, at:Date.now()});
+    save(); notify(peer.name + ' accepted your swap. Say hi.');
+    if (!document.getElementById('view-matches').classList.contains('hidden')) renderMatches();
+    renderDiscover();
+  }, 1600);
+}
+function cancelSwap(peerId) {
+  delete state.swaps[peerId]; delete state.threads[peerId];
+  if (state.activeSwap === peerId) state.activeSwap = null;
+  save(); renderMatches(); renderDiscover();
+}
+function renderMatches() {
+  const ids = Object.keys(state.swaps);
+  const list = document.getElementById('match-list');
+  if (!ids.length) {
+    list.innerHTML = `<div class="bg-white border border-dashed border-slate-300 rounded-2xl p-6 text-center">
+      <p class="font-semibold text-slate-800">No swaps yet</p>
+      <p class="text-sm text-slate-600 mt-1">Find someone who teaches what you want to learn.</p>
+      <button onclick="navigateTo('discover')" class="mt-4 px-4 py-2 text-sm font-semibold text-white bg-brand-600 rounded-xl">Browse students</button></div>`;
+    document.getElementById('chat-panel').innerHTML = '<div class="flex-1 flex items-center justify-center text-sm text-slate-500 p-8 text-center">Your conversations will appear here once a swap is accepted.</div>';
+    return;
+  }
+  if (!state.activeSwap || !state.swaps[state.activeSwap]) state.activeSwap = ids.find(i => state.swaps[i].status === 'matched') || ids[0];
+  list.innerHTML = ids.map(id => {
+    const p = PEERS.find(x => x.id === id), s = state.swaps[id], active = id === state.activeSwap;
+    return `<button onclick="openSwap('${id}')" class="w-full text-left bg-white border rounded-2xl p-4 transition ${active ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200 hover:bg-slate-50'}">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0" style="background:${avatarColor(p.id)}">${initials(p.name)}</div>
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold text-slate-900 text-sm truncate">${esc(p.name)}</p>
+          <p class="text-xs ${s.status === 'pending' ? 'text-amber-600' : 'text-emerald-600'} font-medium">${s.status === 'pending' ? 'Waiting for a reply' : 'Swap accepted'}</p>
+        </div>
+      </div></button>`;
+  }).join('');
+  renderChat();
+}
+function openSwap(id) { state.activeSwap = id; save(); renderMatches(); }
+function renderChat() {
+  const id = state.activeSwap, p = PEERS.find(x => x.id === id), s = state.swaps[id];
+  const panel = document.getElementById('chat-panel');
+  const msgs = state.threads[id] || [];
+  const teaches = s.theyTeach && s.theyTeach.length ? s.theyTeach.join(', ') : p.teach.join(', ');
+  const learns = s.theyLearn && s.theyLearn.length ? s.theyLearn.join(', ') : '—';
+  panel.innerHTML = `
+    <div class="p-4 border-b border-slate-200 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="font-bold text-slate-900 truncate">${esc(p.name)}</p>
+        <p class="text-xs text-slate-500 truncate">They teach you: ${esc(teaches)} · You teach them: ${esc(learns)}</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        ${s.status === 'matched' ? `<button onclick="bookSession()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white">Book session</button>` : ''}
+        <button onclick="cancelSwap('${id}')" class="p-2 rounded-xl border border-slate-300 text-slate-500 hover:bg-slate-50" aria-label="Cancel swap"><span data-icon="x" data-size="15"></span></button>
+      </div>
+    </div>
+    <div id="chat-log" class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar max-h-[46vh]">
+      ${s.status === 'pending' ? '<p class="text-xs text-slate-500 text-center py-6">Request sent. You can message once they accept.</p>' : ''}
+      ${msgs.map(m => `<div class="flex ${m.from === 'me' ? 'justify-end' : 'justify-start'}">
+        <p class="max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm ${m.from === 'me' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-800'}">${esc(m.text)}</p></div>`).join('')}
+    </div>
+    <div class="p-3 border-t border-slate-200 flex items-center gap-2">
+      <button onclick="draftIntro()" id="draft-btn" class="px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 text-brand-700 hover:bg-slate-50 inline-flex items-center gap-1.5 shrink-0" ${s.status === 'pending' ? 'disabled' : ''}><span data-icon="sparkles" data-size="14"></span>Draft</button>
+      <input id="chat-input" placeholder="${s.status === 'pending' ? 'Waiting for them to accept…' : 'Write a message'}" ${s.status === 'pending' ? 'disabled' : ''} class="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none text-sm">
+      <button onclick="sendMessage()" ${s.status === 'pending' ? 'disabled' : ''} class="p-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-40 shrink-0" aria-label="Send"><span data-icon="send" data-size="16"></span></button>
+    </div>`;
+  paintIcons(panel);
+  const input = document.getElementById('chat-input');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+  const log = document.getElementById('chat-log');
+  if (log) log.scrollTop = log.scrollHeight;
+}
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const id = state.activeSwap;
+  state.threads[id].push({from:'me', text, at:Date.now()});
+  input.value = '';
+  save(); renderChat();
+  setTimeout(() => {
+    const p = PEERS.find(x => x.id === id);
+    state.threads[id].push({from:'them', text:'Works for me. Shall we start with a 45-minute session this week?', at:Date.now()});
+    save();
+    if (!document.getElementById('view-matches').classList.contains('hidden')) renderChat();
+    notify('New message from ' + p.name + '.');
+  }, 1400);
+}
+function bookSession() {
+  const id = state.activeSwap, p = PEERS.find(x => x.id === id);
+  state.points += 15;
+  state.threads[id].push({from:'them', text:'Booked. See you then — I\'ll bring practice problems.', at:Date.now()});
+  save(); renderAuthUI(); renderChat();
+  notify('Session booked with ' + p.name + '. You earned 15 points for teaching.');
+}
+
+/* ---------------- community ---------------- */
+function renderCommunity() {
+  const demand = {};
+  PEERS.forEach(p => p.learn.forEach(s => demand[s] = (demand[s] || 0) + 1));
+  if (state.user) state.user.learn.forEach(s => demand[s] = (demand[s] || 0) + 1);
+  const top = Object.entries(demand).sort((a,b) => b[1] - a[1]).slice(0, 6);
+  const max = top.length ? top[0][1] : 1;
+
+  const stats = [
+    {label:'Students listed', value: PEERS.length + (state.user ? 1 : 0), icon:'users'},
+    {label:'Skills on offer', value: new Set(PEERS.flatMap(p => p.teach)).size, icon:'book'},
+    {label:'Sessions completed', value: PEERS.reduce((a,p) => a + p.sessions, 0), icon:'check'},
+    {label:'Average rating', value: (PEERS.reduce((a,p) => a + p.rating, 0) / PEERS.length).toFixed(1), icon:'star'}
+  ];
+  document.getElementById('stats-grid').innerHTML = stats.map(s => `
+    <div class="bg-white border border-slate-200 rounded-2xl p-5">
+      <div class="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mb-3" data-icon="${s.icon}" data-size="18"></div>
+      <p class="text-2xl font-bold text-slate-900">${s.value}</p>
+      <p class="text-xs text-slate-500 mt-0.5">${s.label}</p></div>`).join('');
+
+  document.getElementById('demand-list').innerHTML = top.map(([n, c]) => `
+    <div>
+      <div class="flex items-center justify-between text-sm mb-1">
+        <span class="font-medium text-slate-700">${skillMeta(n).e} ${esc(n)}</span>
+        <span class="text-xs text-slate-500">${c} student${c > 1 ? 's' : ''} asking</span>
+      </div>
+      <div class="h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-brand-600 to-accent-500" style="width:${Math.round(c / max * 100)}%"></div></div>
+    </div>`).join('');
+
+  document.getElementById('leaderboard').innerHTML = [...PEERS].sort((a,b) => b.sessions - a.sessions).slice(0, 6).map((p, i) => `
+    <div class="flex items-center gap-3">
+      <span class="w-6 text-sm font-bold text-slate-400">${i + 1}</span>
+      <div class="w-9 h-9 rounded-full text-white text-xs font-bold flex items-center justify-center" style="background:${avatarColor(p.id)}">${initials(p.name)}</div>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold text-slate-800 truncate">${esc(p.name)}</p>
+        <p class="text-xs text-slate-500 truncate">${esc(p.teach.slice(0,2).join(', '))}</p>
+      </div>
+      <span class="text-xs font-semibold text-slate-600 shrink-0">${p.sessions} sessions</span>
+    </div>`).join('');
+  paintIcons(document.getElementById('view-community'));
+}
+
+/* ---------------- dashboard ---------------- */
+function renderDashboard() {
+  const u = state.user; if (!u) return;
+  const swaps = Object.entries(state.swaps);
+  const matched = swaps.filter(([,s]) => s.status === 'matched').length;
+  const badges = [
+    {n:'Joined SkillSwap', got:true},
+    {n:'First swap request', got:swaps.length > 0},
+    {n:'First accepted swap', got:matched > 0},
+    {n:'100 points', got:state.points >= 100}
+  ];
+  document.getElementById('dashboard-body').innerHTML = `
+    <div class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8">
+      <div class="flex flex-wrap items-center gap-5">
+        <div class="w-20 h-20 rounded-2xl text-white text-2xl font-bold flex items-center justify-center" style="background:${avatarColor(u.name)}">${initials(u.name)}</div>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-2xl font-bold text-slate-900">${esc(u.name)}</h2>
+          <p class="text-sm text-slate-600">${esc([u.year, u.dept, u.course].filter(Boolean).join(' · '))}</p>
+          <p class="text-sm text-slate-500">${esc(u.college)}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-3xl font-bold text-amber-600">${state.points}</p>
+          <p class="text-xs text-slate-500">points</p>
+        </div>
+      </div>
+      ${u.bio ? `<p class="mt-5 text-sm text-slate-600">${esc(u.bio)}</p>` : ''}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-7">
+        <div>
+          <p class="text-xs font-bold text-slate-400 mb-2">You teach</p>
+          <div class="flex flex-wrap gap-1.5">${u.teach.map(s => skillChip(s,'teach')).join('')}</div>
+        </div>
+        <div>
+          <p class="text-xs font-bold text-slate-400 mb-2">You're learning</p>
+          <div class="flex flex-wrap gap-1.5">${u.learn.map(s => skillChip(s,'learn')).join('')}</div>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3 mt-7 pt-6 border-t border-slate-100">
+        <button onclick="editSkills()" class="px-4 py-2.5 text-sm font-semibold rounded-xl bg-brand-600 hover:bg-brand-700 text-white">Edit my skills</button>
+        <button onclick="navigateTo('discover')" class="px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50">Find a swap</button>
+        <button onclick="signOut()" class="px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50">Sign out</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h3 class="font-bold text-slate-800 mb-4">Activity</h3>
+        <dl class="space-y-3 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-600">Swap requests sent</dt><dd class="font-semibold text-slate-900">${swaps.length}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-600">Accepted swaps</dt><dd class="font-semibold text-slate-900">${matched}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-600">Skills you teach</dt><dd class="font-semibold text-slate-900">${u.teach.length}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-600">Member since</dt><dd class="font-semibold text-slate-900">${new Date(u.joined).toLocaleDateString()}</dd></div>
+        </dl>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <h3 class="font-bold text-slate-800 mb-4">Badges</h3>
+        <div class="space-y-2.5">
+          ${badges.map(b => `<div class="flex items-center gap-3 text-sm ${b.got ? 'text-slate-800' : 'text-slate-400'}">
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center ${b.got ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}" data-icon="${b.got ? 'check' : 'clock'}" data-size="15"></span>
+            ${esc(b.n)}</div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  paintIcons(document.getElementById('view-dashboard'));
+}
+function editSkills() {
+  draft.teach = [...state.user.teach]; draft.learn = [...state.user.learn];
+  draft.level = state.user.level; draft.avail = [...state.user.avail]; draft.mode = state.user.mode;
+  document.getElementById('f-name').value = state.user.name;
+  document.getElementById('f-college').value = state.user.college;
+  document.getElementById('f-dept').value = state.user.dept;
+  document.getElementById('f-year').value = state.user.year;
+  document.getElementById('f-bio').value = state.user.bio || '';
+  renderPickers();
+  PAGES.forEach(p => document.getElementById('view-' + p).classList.toggle('hidden', p !== 'signup'));
+  goToStep(2);
+  window.scrollTo({top:0});
+}
+function signOut() {
+  state = { user:null, points:0, swaps:{}, threads:{}, notifs:[], activeSwap:null };
+  draft = { teach:[], learn:[], level:'Beginner', avail:['Weekdays'], mode:'Both' };
+  save(); renderAuthUI(); renderPickers(); goToStep(1);
+  navigateTo('landing');
+}
+
+/* ---------------- study buddy (Claude) ---------------- */
+let sampleFn = null;
+Promise.resolve(window.claude && window.claude.use ? window.claude.use('sample') : null)
+  .then(fn => {
+    sampleFn = fn || null;
+    if (!sampleFn) document.getElementById('ai-unavailable').classList.remove('hidden');
+  })
+  .catch(() => document.getElementById('ai-unavailable').classList.remove('hidden'));
+
+async function askAI(kind) {
+  const out = document.getElementById('ai-output');
+  const topic = document.getElementById('ai-topic').value.trim() || (state.user && state.user.learn[0]) || 'Python';
+  if (!sampleFn) {
+    out.classList.remove('hidden');
+    out.textContent = 'The study buddy isn\'t available here. In the meantime, browse Discover for students who teach ' + topic + '.';
+    return;
+  }
+  const teaches = state.user ? state.user.teach.join(', ') : 'general study help';
+  const prompts = {
+    plan: `A college student wants to learn "${topic}" through weekly 45-minute sessions with another student (not a professional tutor). Write a 4-week plan. For each week give the focus, one thing the peer should explain, and one small task the learner does alone. Keep it under 250 words, plain text, no markdown headers.`,
+    questions: `A college student is about to have their first peer learning session on "${topic}". List 6 specific questions they should ask their peer to make the session useful. Plain text, numbered, one line each.`,
+    teach: `A college student can teach: ${teaches}. They are learning "${topic}". Suggest 4 concrete things from their own skills they could offer back in a swap, each with a one-line description of what a session would cover. Plain text, no markdown headers.`
+  };
+  out.classList.remove('hidden');
+  out.textContent = 'Thinking…';
+  try {
+    const res = await sampleFn(prompts[kind], { onText: ({text}) => { out.textContent = text; } });
+    out.textContent = res.text;
+  } catch (err) {
+    out.textContent = err && err.code === 'rate_limited'
+      ? 'Too many requests just now. Try again in a minute.'
+      : 'That didn\'t go through. Try again, or ask your peer directly in Matches.';
+  }
+}
+async function draftIntro() {
+  const id = state.activeSwap, p = PEERS.find(x => x.id === id), s = state.swaps[id];
+  const input = document.getElementById('chat-input');
+  if (!sampleFn) { input.value = `Hi ${p.name.split(' ')[0]}! I'd love help with ${(s.theyTeach && s.theyTeach[0]) || p.teach[0]} — free this week for a 45-minute session?`; return; }
+  const btn = document.getElementById('draft-btn');
+  btn.disabled = true; btn.textContent = 'Drafting…';
+  try {
+    const res = await sampleFn(`Write a short, friendly first message from one college student to another to set up a skill swap. They want help with ${(s.theyTeach && s.theyTeach[0]) || p.teach[0]}, and can offer ${(s.theyLearn && s.theyLearn[0]) || 'help in return'}. Two sentences, casual, no greeting fluff beyond a hi, no sign-off. Return only the message.`);
+    input.value = res.text.trim().replace(/^["']|["']$/g, '');
+  } catch (e) {
+    input.value = `Hi ${p.name.split(' ')[0]}! Could we set up a session on ${(s.theyTeach && s.theyTeach[0]) || p.teach[0]} this week?`;
+  }
+  btn.disabled = false; btn.innerHTML = '<span data-icon="sparkles" data-size="14"></span>Draft';
+  paintIcons(btn);
+}
+
+/* ---------------- boot ---------------- */
+function renderTicker() {
+  const pairs = [['Organic chemistry','Python'],['Zoology','Graphic design'],['Marketing','Excel'],['Physics','Public speaking']];
+  document.getElementById('ticker').innerHTML = pairs.map(([a,b]) => `
+    <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100">
+      ${skillChip(a,'flat')}<span class="text-brand-500" data-icon="swap" data-size="16"></span>${skillChip(b,'flat')}
+    </div>`).join('');
+}
+function applyTheme() {
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.classList.toggle('dark-ui', dark);
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd.classList.contains('hidden') && !dd.contains(e.target) && !e.target.closest('[aria-label="Notifications"]')) dd.classList.add('hidden');
+});
+(function init() {
+  applyTheme();
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {}
+  document.getElementById('cat').innerHTML = CATS.map(c => `<option>${c}</option>`).join('');
+  load();
+  renderTicker();
+  renderPickers();
+  renderAuthUI();
+  paintIcons();
+  navigateTo('landing');
+})();
+</script>
+</body>
+</html>
